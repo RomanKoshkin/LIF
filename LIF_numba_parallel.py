@@ -10,12 +10,12 @@ np.random.seed(seed)
 
 @jit (nopython=True, fastmath=True, nogil=True, parallel=True)
 def run_numba():
-    N = 3000
+    N = 300
     T = 30
     dt = 0.01
     t = np.arange(0, T, dt)
     
-    refractory_period = 1
+    refractory_period = 1.0
     AP = np.zeros((N, 1))
     
     # equilibrium potentials:
@@ -30,8 +30,8 @@ def run_numba():
 
     # define neuron types in the network:
     neur_type_mask = np.zeros_like(AP)
-    neur_type_mask[:10] = 0
-    neur_type_mask[10:] = 1  
+    neur_type_mask[:int(N*0.2)] = 0
+    neur_type_mask[int(N*0.2):] = 1  
 
     # initialize spikes
     exc_id = np.where(neur_type_mask == 1)[0]
@@ -95,9 +95,9 @@ def run_numba():
     gaba = np.zeros((N, N))
     in_refractory = - np.ones((1, N)) # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -----------------------------
     VV = np.zeros((N, len(t)))
-    # AMPA = np.zeros((N, N, len(t)))
-    # NMDA = np.zeros((N, N, len(t)))
-    # GABA = np.zeros((N, N, len(t)))
+    AMPA = np.zeros((N, N, len(t)))
+    NMDA = np.zeros((N, N, len(t)))
+    GABA = np.zeros((N, N, len(t)))
     dV = np.zeros((1, N))
     I_E = np.zeros((1, N))
     I_I = np.zeros((1, N))
@@ -120,9 +120,9 @@ def run_numba():
             I_I[0,ii] = 0.0
 
             for jj in range(N):
-                ampa[ii, jj] += (-ampa[ii, jj] / tau_ampa + neur_type_mask[ii, 0] * delayed_spike[jj] * w[ii, jj]) * dt
-                nmda[ii, jj] += (-nmda[ii, jj] / tau_nmda + neur_type_mask[ii, 0] * delayed_spike[jj] * w[ii, jj]) * dt
-                gaba[ii, jj] += (-gaba[ii, jj] / tau_gaba + (1.0 - neur_type_mask[ii, 0]) * delayed_spike[jj] * w[ii, jj]) * dt
+                ampa[ii, jj] += (-ampa[ii, jj] / tau_ampa + neur_type_mask[jj, 0] * delayed_spike[jj] * w[ii, jj]) * dt
+                nmda[ii, jj] += (-nmda[ii, jj] / tau_nmda + neur_type_mask[jj, 0] * delayed_spike[jj] * w[ii, jj]) * dt
+                gaba[ii, jj] += (-gaba[ii, jj] / tau_gaba + (1.0 - neur_type_mask[jj, 0]) * delayed_spike[jj] * w[ii, jj]) * dt
 
                 I_E[0,ii] += -ampa[ii,jj] * (V[0,ii] - V_E) - 0.1 * nmda[ii,jj] * (V[0,ii] - V_E)
                 I_I[0,ii] += -gaba[ii,jj] * (V[0,ii] - V_I)
@@ -143,13 +143,13 @@ def run_numba():
                 AP[ii] = 1
 
             VV[ii, i] = V[0, ii]
-            # AMPA[ii, :, i] = ampa[ii, :]
-            # NMDA[ii, :, i] = nmda[ii, :]
-            # GABA[ii, :, i] = gaba[ii, :]
+            AMPA[ii, :, i] = ampa[ii, :]
+            NMDA[ii, :, i] = nmda[ii, :]
+            GABA[ii, :, i] = gaba[ii, :]
             
         
         in_refractory -= dt
-    AMPA, NMDA, GABA = 0, 0, 0
+    # AMPA, NMDA, GABA = 0, 0, 0
 
     return w, neur_type_mask, t, AMPA, NMDA, GABA, VV
 
